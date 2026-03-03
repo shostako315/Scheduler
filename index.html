@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FORTIENZ | Adaptive Workspace</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        window.ZENITH_CONFIG = {
+            isShare: {{ 'true' if is_share else 'false' }},
+        sharedUserId: "{{ shared_user_id if is_share else '' }}"
+        };
+    </script>
+</head>
+
+<body class="dark-theme">
+    <div class="app-container">
+        <!-- Unified Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">FORTIENZ</div>
+
+            <nav class="sidebar-nav">
+                <div class="nav-item active" data-view="calendar">📅 予定表</div>
+                <div class="nav-item" data-view="tasks">✅ タスク</div>
+                <div class="nav-item" style="opacity: 0.4;">✉ メール</div>
+                <div class="nav-item" style="opacity: 0.4;">👥 連絡先</div>
+            </nav>
+
+            <div class="sidebar-divider"></div>
+
+            <div class="workspace-switcher-outer">
+                <div
+                    style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding: 0 4px;">
+                    <span
+                        style="font-size: 10px; color: var(--text-secondary); text-transform: uppercase;">Workspace</span>
+                    <button id="add-workspace-btn"
+                        style="background:none; border:none; color:var(--primary-color); cursor:pointer; font-size:16px;">+</button>
+                </div>
+                <select id="workspace-select" class="workspace-select"></select>
+            </div>
+
+            <div class="sidebar-section">
+                <h3>共有リスト</h3>
+                <div id="sidebar-user-list"></div>
+                <button id="add-user-btn" class="btn"
+                    style="margin: 16px 20px; width: calc(100% - 40px); background: transparent; border: 1px dashed var(--border-color); opacity: 0.6;">+
+                    メンバー追加</button>
+            </div>
+
+            <div id="identity-status" class="identity-status">
+                <div class="identity-avatar" id="user-initial">?</div>
+                <div style="flex: 1; min-width: 0;">
+                    <div id="logged-in-name"
+                        style="font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Guest
+                    </div>
+                    <div id="logout-link"
+                        style="font-size: 10px; color: var(--primary-color); cursor: pointer; margin-top: 2px;">ログアウト
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="top-header">
+                <div class="view-controls">
+                    <h1 id="current-month-year">2026年3月</h1>
+                    <div class="btn-group">
+                        <button id="prev-week" class="btn btn-icon">＜</button>
+                        <button id="next-week" class="btn btn-icon">＞</button>
+                        <button id="today-btn" class="btn" style="background: var(--border-color);">今日</button>
+                    </div>
+                </div>
+                <div class="user-profile">
+                    <button id="ai-assist-btn" class="btn"
+                        style="background: linear-gradient(45deg, #4285f4, #9b72cb); color: white; border: none; font-weight: 600;">✨
+                        FORTIENZ Planner</button>
+                    <button id="share-btn" class="btn">🔗 共有</button>
+                    <button id="add-event-btn" class="btn btn-primary">+ 予定作成</button>
+                </div>
+            </header>
+
+            <div id="calendar-view" class="view-section">
+                <div class="calendar-container">
+                    <div class="time-labels" id="time-labels"></div>
+                    <div class="calendar-grid-wrapper">
+                        <div class="calendar-header" id="calendar-days-header"></div>
+                        <div class="calendar-grid" id="calendar-grid"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Task View Hidden by Default -->
+            <div id="task-view" class="view-section" style="display:none; padding: 24px;">
+                <!-- Task UI Logic here -->
+            </div>
+        </main>
+    </div>
+
+    <!-- Identity Modal (Unified) -->
+    <div id="identity-modal" class="modal">
+        <div class="modal-content" style="width: 400px; margin-top: 15vh;">
+            <div id="identity-step-email" style="padding: 40px 32px; text-align: center;">
+                <h1 style="font-size: 28px; margin-bottom: 8px; color: var(--primary-color); letter-spacing: 2px;">
+                    FORTIENZ</h1>
+                <p style="color: var(--text-secondary); margin-bottom: 32px; font-size: 14px;">あなたのお名前とメールアドレスを入力してください
+                </p>
+                <div class="form-group" style="padding: 0; margin-bottom: 12px;">
+                    <input type="text" id="identity-name" placeholder="お名前 (例: 佐藤 太郎)"
+                        style="text-align: center; font-size: 16px;">
+                </div>
+                <div class="form-group" style="padding: 0;">
+                    <input type="email" id="identity-email" placeholder="example@fortienz.com"
+                        style="text-align: center; font-size: 16px;">
+                </div>
+                <button id="identity-submit-btn" class="btn btn-primary"
+                    style="width: 100%; margin-top: 24px; height: 48px; font-size: 16px;">
+                    デモを開始する
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Event Modal (Restored) -->
+    <div id="event-modal" class="modal">
+        <div class="modal-content">
+            <header class="modal-header">
+                <h2 id="modal-title">予定の作成</h2>
+                <button class="close-btn">&times;</button>
+            </header>
+            <div class="modal-body">
+                <form id="event-form">
+                    <input type="hidden" id="event-id">
+                    <div class="form-group">
+                        <label>タイトル</label>
+                        <input type="text" id="event-title" placeholder="会議、外勤、休暇など" required>
+                    </div>
+                    <div style="display: flex; gap: 12px; padding: 0 24px;">
+                        <div class="form-group" style="flex: 1; padding: 0;">
+                            <label>日付</label>
+                            <input type="date" id="event-date" required>
+                        </div>
+                        <div class="form-group" style="flex: 1; padding: 0;">
+                            <label>時間 (HH:MM)</label>
+                            <input type="text" id="event-time" placeholder="10:00" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>担当者</label>
+                        <select id="event-user-id"></select>
+                    </div>
+                    <div class="form-group">
+                        <label>色</label>
+                        <div id="color-presets" style="display: flex; gap: 8px;"></div>
+                        <input type="hidden" id="event-color" value="#0078d4">
+                    </div>
+                    <div class="form-group">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px;">
+                            <input type="checkbox" id="event-is-private" style="width: auto;"> 他のユーザーから隠す
+                        </label>
+                    </div>
+                </form>
+            </div>
+            <footer class="modal-footer">
+                <button type="button" class="btn delete-btn" id="delete-event-btn"
+                    style="display:none; color: #ff4d4d;">削除</button>
+                <button type="submit" form="event-form" class="btn btn-primary">保存</button>
+            </footer>
+        </div>
+    </div>
+
+    <!-- User Modal (Restored) -->
+    <div id="user-modal" class="modal">
+        <div class="modal-content" style="width: 360px;">
+            <header class="modal-header">
+                <h2>メンバー追加</h2>
+                <button class="close-btn">&times;</button>
+            </header>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>名前</label>
+                    <input type="text" id="user-name" placeholder="表示名">
+                </div>
+            </div>
+            <footer class="modal-footer">
+                <button id="save-user-btn" class="btn btn-primary" style="width: 100%;">追加</button>
+            </footer>
+        </div>
+    </div>
+
+    <!-- Sharing Modal (Restored) -->
+    <div id="sharing-modal" class="modal">
+        <div class="modal-content" style="width: 480px;">
+            <header class="modal-header">
+                <h2>ワークスペース管理</h2>
+                <button class="close-btn">&times;</button>
+            </header>
+            <div class="modal-body">
+                <div style="padding: 24px;">
+                    <label style="font-size: 12px; color: var(--text-secondary);">共有リンク</label>
+                    <div style="display: flex; gap: 8px; margin-top: 8px;">
+                        <input type="text" id="share-url" readonly
+                            style="flex: 1; background: #000; border: 1px solid var(--border-color); color: #888;">
+                        <button id="copy-share-btn" class="btn">コピー</button>
+                    </div>
+                </div>
+                <div class="sidebar-divider"></div>
+                <div class="form-group">
+                    <label>メールで招待</label>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="email" id="invite-email" placeholder="example@fortienz.com" style="flex: 1;">
+                        <button id="invite-btn" class="btn btn-primary">招待</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Modal (Restored) -->
+    <div id="ai-modal" class="modal">
+        <div class="modal-content" style="width: 600px;">
+            <header class="modal-header">
+                <h2>✨ FORTIENZ Planner 分析</h2>
+                <button class="close-btn">&times;</button>
+            </header>
+            <div id="ai-content" class="modal-body"
+                style="padding: 24px; white-space: pre-wrap; font-size: 14px; line-height: 1.6; max-height: 60vh; overflow-y: auto;">
+                分析中...
+            </div>
+            <footer class="modal-footer">
+                <button class="btn close-btn">閉じる</button>
+            </footer>
+        </div>
+    </div>
+
+    <!-- Workspace Modal (Restored) -->
+    <div id="workspace-modal" class="modal">
+        <div class="modal-content" style="width: 360px;">
+            <header class="modal-header">
+                <h2>ワークスペース作成</h2>
+                <button class="close-btn">&times;</button>
+            </header>
+            <div class="modal-body" style="padding: 24px;">
+                <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 20px;">
+                    新しいチームプロジェクトや共有スペースの名前を入力してください。</p>
+                <div class="form-group" style="padding: 0;">
+                    <label>ワークスペース名</label>
+                    <input type="text" id="new-workspace-name" placeholder="例: 商品開発プロジェクト A">
+                </div>
+            </div>
+            <footer class="modal-footer" style="padding: 16px 24px;">
+                <button id="save-workspace-btn" class="btn btn-primary"
+                    style="width: 100%; height: 44px; font-weight: 600;">作成</button>
+            </footer>
+        </div>
+    </div>
+
+    <div id="toast-container" style="position: fixed; bottom: 24px; right: 24px; z-index: 2000;"></div>
+    <script src="{{ url_for('static', filename='js/calendar.js') }}"></script>
+</body>
+
+</html>
